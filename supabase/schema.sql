@@ -19,3 +19,8 @@ create policy "Insert own progress" on public.progress
   for insert to authenticated with check ((select auth.uid()) = user_id);
 create policy "Update own progress" on public.progress
   for update to authenticated using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+
+-- Let logged-in users use the table (row-level security above still limits them to their own row),
+-- then tell the API to pick up the new table straight away.
+grant select, insert, update on public.progress to authenticated;
+notify pgrst, 'reload schema';

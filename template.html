@@ -23,6 +23,7 @@
   .account { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
   .account .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--grey); flex: none; }
   .account.on .dot { background: var(--green); } .account.err .dot { background: var(--red); }
+  .account { flex-wrap: wrap; max-width: 100%; }
   .account b { color: var(--ink); font-weight: 600; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .auth { max-width: 400px; }
   .auth form { display: grid; gap: 10px; }
@@ -382,7 +383,9 @@ const acct = {
     const { data, error } = await this.sb.from('progress').select('data, updated_at').eq('user_id', u.id).maybeSingle();
     if (this.user?.id !== u.id) return;
     if (error) {
-      S = load(cacheKey); this.state = 'err'; this.note = 'could not load progress — using this browser\'s copy';
+      console.error('Loading progress failed:', error);
+      S = load(cacheKey); this.state = 'err';
+      this.note = 'could not load progress (' + (error.message || error.code || 'unknown error') + ') — using this browser\'s copy';
     } else if (data) {
       S = migrate(data.data || {}); this.lastRemote = data.updated_at; LS.set(cacheKey, JSON.stringify(S));
       this.state = 'on'; this.note = 'synced';
@@ -414,7 +417,7 @@ const acct = {
     const updated_at = new Date().toISOString();
     const { error } = await this.sb.from('progress').upsert({ user_id: this.user.id, data: S, updated_at });
     this.writing = false;
-    if (error) { this.state = 'err'; this.note = 'save failed — retrying'; this.pending = true; setTimeout(() => this.flush(), 5000); }
+    if (error) { console.error('Saving progress failed:', error); this.state = 'err'; this.note = 'save failed (' + (error.message || error.code || 'unknown error') + ') — retrying'; this.pending = true; setTimeout(() => this.flush(), 5000); }
     else { this.lastRemote = updated_at; this.state = 'on'; this.note = 'synced'; }
     renderAccount();
     if (this.pending && !error) this.flush();

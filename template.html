@@ -20,6 +20,20 @@
   nav button.active { background: var(--ink); color: #fff; border-color: var(--ink); }
   .count { display: inline-block; min-width: 22px; padding: 0 6px; margin-left: 6px; border-radius: 999px; background: var(--line); color: var(--ink); font-size: 12px; text-align: center; }
   nav button.active .count { background: rgba(255,255,255,.2); color: #fff; }
+  .account { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+  .account .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--grey); flex: none; }
+  .account.on .dot { background: var(--green); } .account.err .dot { background: var(--red); }
+  .account b { color: var(--ink); font-weight: 600; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .auth { max-width: 400px; }
+  .auth form { display: grid; gap: 10px; }
+  .auth label { display: grid; gap: 4px; font-size: 14px; color: var(--muted); }
+  .auth input { font: inherit; font-size: 16px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); }
+  .auth .primary { font: inherit; font-size: 15px; padding: 11px; border: 0; border-radius: 10px; background: var(--ink); color: #fff; cursor: pointer; }
+  .auth .primary:disabled { opacity: .6; cursor: default; }
+  .auth .links { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; }
+  .linkbtn { background: none; border: 0; padding: 0; color: var(--blue); cursor: pointer; font: inherit; font-size: 14px; }
+  .auth .note { font-size: 14px; line-height: 1.5; min-height: 1.5em; margin: 0; }
+  .auth .note.bad { color: var(--red); } .auth .note.good { color: var(--green); }
   main { max-width: 980px; margin: 0 auto; padding: 20px; }
   .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; color: var(--muted); font-size: 14px; }
   .toolbar .spacer { flex: 1; }
@@ -84,6 +98,7 @@
 <header class="top">
   <h1>汉字 <span>Flashcards</span> · AQA GCSE Mandarin</h1>
   <nav id="nav"></nav>
+  <div class="account" id="account"></div>
 </header>
 <main>
   <div class="toolbar">
@@ -93,7 +108,7 @@
     <span class="spacer"></span>
     <button class="btn-small" id="undoBtn" title="Undo last classification (Ctrl+Z)">↶ Undo</button>
     <button class="btn-small" id="viewBtn">View all cards in deck</button>
-    <button class="btn-small" id="settingsBtn">⚙ Progress</button>
+    <button class="btn-small" id="settingsBtn">⚙ Account &amp; progress</button>
   </div>
   <div class="filters" id="filters"></div>
   <div class="card" id="card"></div>
@@ -107,8 +122,8 @@
 </div></div>
 
 <div class="modal-bg" id="settingsModal"><div class="modal settings">
-  <div class="modal-head"><h2>Progress</h2><button class="btn-small" data-close>Close</button></div>
-  <p>Progress is saved automatically in this browser.</p>
+  <div class="modal-head"><h2>Account &amp; progress</h2><button class="btn-small" data-close>Close</button></div>
+  <p id="accountInfo"></p>
   <p id="summary"></p>
   <p>Backup code — paste it on another device or browser to copy your progress across:</p>
   <textarea id="backup" readonly></textarea>
@@ -119,6 +134,19 @@
      <span id="msg" style="margin-left:8px;color:var(--muted)"></span></p>
 </div></div>
 
+<div class="modal-bg" id="authModal"><div class="modal auth">
+  <div class="modal-head"><h2 id="authTitle">Log in</h2><button class="btn-small" data-close>Close</button></div>
+  <form id="authForm" novalidate>
+    <label id="emailRow">Email <input type="email" id="authEmail" autocomplete="email" required></label>
+    <label id="passRow">Password <input type="password" id="authPass" autocomplete="current-password" minlength="6" required></label>
+    <button class="primary" id="authSubmit" type="submit">Log in</button>
+    <p class="note" id="authNote" role="status"></p>
+    <div class="links"><button type="button" class="linkbtn" id="authSwitch">Create an account</button>
+      <button type="button" class="linkbtn" id="authForgot">Forgot password?</button></div>
+  </form>
+</div></div>
+
+<script src="config.js"></script>
 <script>
 {
 const VOCAB = __VOCAB__;
@@ -127,6 +155,7 @@ const STORE_KEY = 'mandarin-flashcards-v1';
 const LS = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
 
 // Per-card state: done = classified in Initial; deck flags <deck><form>: l = LEARN, a = REVISE I, b = REVISE II; h = hanzi, p = pinyin
+let cacheKey = STORE_KEY;          // STORE_KEY + '-' + userId while logged in
 let S = load(STORE_KEY);
 let mode = LS.get(STORE_KEY + '-mode') || 'initial';
 if (!['initial', 'learn', 'rev1', 'rev2'].includes(mode)) mode = 'initial';
@@ -144,7 +173,7 @@ function migrate(s) {
   return s;
 }
 function load(key) { try { return migrate(JSON.parse(LS.get(key)) || {}); } catch { return {}; } }
-function save() { LS.set(STORE_KEY, JSON.stringify(S)); }
+function save() { LS.set(cacheKey, JSON.stringify(S)); acct.queueSave(); }
 function st(id) { return S[id] || (S[id] = {}); }
 
 const DECK = { learn: 'l', rev1: 'a', rev2: 'b' };
@@ -304,6 +333,11 @@ function closeModals() { document.querySelectorAll('.modal-bg').forEach(m => m.c
 function msg(s) { document.getElementById('msg').textContent = s; }
 
 function renderSettings() {
+  document.getElementById('accountInfo').textContent = acct.user
+    ? `Logged in as ${acct.user.email}. Your progress is saved to your account and syncs to any device where you log in.`
+    : acct.enabled
+      ? 'You are not logged in, so progress is saved in this browser only. Log in or create an account (top right) to save it to an account and use it on any device. The first time you log in, the progress in this browser is copied into your new account.'
+      : 'Progress is saved in this browser only. (Accounts are not set up on this copy of the site.)';
   const ids = VOCAB.map(c => c.id), n = f => ids.filter(f).length;
   const has = (i, d) => st(i)[d + 'h'] || st(i)[d + 'p'];
   document.getElementById('summary').innerHTML =
@@ -311,6 +345,150 @@ function renderSettings() {
     ['l', 'a', 'b'].map((d, k) => `${['LEARN', 'Revise I', 'Revise II'][k]}: <b>${n(i => st(i)[d + 'h'])}</b> hanzi, <b>${n(i => st(i)[d + 'p'])}</b> pinyin`).join(' · ');
   document.getElementById('backup').value = btoa(unescape(encodeURIComponent(JSON.stringify(S))));
 }
+
+// ---- accounts (Supabase email/password auth + one private progress row per user) ----
+const CFG = window.FLASHCARDS_CONFIG || {};
+const SUPABASE_SRC = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js';
+const acct = {
+  enabled: !!(CFG.supabaseUrl && CFG.supabaseAnonKey),
+  sb: null, user: null, state: '', note: '', pending: false, writing: false, timer: null, lastRemote: null,
+  async init() {
+    renderAccount();
+    if (!this.enabled) return;
+    try {
+      if (!window.supabase) await new Promise((ok, fail) => {
+        const s = document.createElement('script'); s.src = SUPABASE_SRC; s.onload = ok; s.onerror = fail; document.head.append(s);
+      });
+      this.sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey);
+    } catch { this.state = 'err'; this.note = 'Account service unavailable — progress saved in this browser'; return renderAccount(); }
+    this.sb.auth.onAuthStateChange((event, session) => {
+      // don't await Supabase calls inside this callback
+      setTimeout(() => {
+        if (event === 'PASSWORD_RECOVERY') openAuth('newpass');
+        this.onUser(session?.user || null);
+      }, 0);
+    });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') this.refresh(); });
+  },
+  async onUser(u) {
+    if ((u?.id || null) === (this.user?.id || null)) { if (u) this.user = u; return renderAccount(); }
+    if (!u) { // logged out: back to this browser's guest progress
+      this.user = null; this.pending = false; clearTimeout(this.timer);
+      cacheKey = STORE_KEY; S = load(STORE_KEY); this.state = ''; this.note = '';
+      undoStack.length = 0; buildQueue(); render(); return renderAccount();
+    }
+    this.user = u; cacheKey = STORE_KEY + '-' + u.id;
+    this.state = ''; this.note = 'loading…'; renderAccount();
+    const { data, error } = await this.sb.from('progress').select('data, updated_at').eq('user_id', u.id).maybeSingle();
+    if (this.user?.id !== u.id) return;
+    if (error) {
+      S = load(cacheKey); this.state = 'err'; this.note = 'could not load progress — using this browser\'s copy';
+    } else if (data) {
+      S = migrate(data.data || {}); this.lastRemote = data.updated_at; LS.set(cacheKey, JSON.stringify(S));
+      this.state = 'on'; this.note = 'synced';
+    } else {
+      // new account: start from this account's cached copy, else copy this browser's guest progress
+      const cached = load(cacheKey);
+      S = Object.keys(cached).length ? cached : load(STORE_KEY);
+      this.state = 'on'; save();
+    }
+    undoStack.length = 0; buildQueue(); render(); renderAccount();
+  },
+  async refresh() { // pick up changes made on another device
+    if (!this.user || this.pending || this.writing) return;
+    const { data } = await this.sb.from('progress').select('data, updated_at').eq('user_id', this.user.id).maybeSingle();
+    if (data && data.updated_at !== this.lastRemote && !this.pending && !this.writing) {
+      S = migrate(data.data || {}); this.lastRemote = data.updated_at; LS.set(cacheKey, JSON.stringify(S));
+      undoStack.length = 0; buildQueue(); render(); this.note = 'updated from another device'; renderAccount();
+    }
+  },
+  queueSave() {
+    if (!this.user) return;
+    this.pending = true; clearTimeout(this.timer);
+    this.note = 'saving…'; renderAccount();
+    this.timer = setTimeout(() => this.flush(), 800);
+  },
+  async flush() {
+    if (this.writing || !this.pending || !this.user) return;
+    this.writing = true; this.pending = false;
+    const updated_at = new Date().toISOString();
+    const { error } = await this.sb.from('progress').upsert({ user_id: this.user.id, data: S, updated_at });
+    this.writing = false;
+    if (error) { this.state = 'err'; this.note = 'save failed — retrying'; this.pending = true; setTimeout(() => this.flush(), 5000); }
+    else { this.lastRemote = updated_at; this.state = 'on'; this.note = 'synced'; }
+    renderAccount();
+    if (this.pending && !error) this.flush();
+  },
+  async logout() { await this.flush(); await this.sb.auth.signOut(); },
+};
+
+function renderAccount() {
+  const el = document.getElementById('account');
+  el.className = 'account ' + (acct.user ? acct.state : acct.state === 'err' ? 'err' : '');
+  el.textContent = '';
+  if (!acct.enabled) return;
+  const span = (txt) => { const s = document.createElement('span'); s.textContent = txt; return s; };
+  if (acct.user) {
+    const dot = span(''); dot.className = 'dot';
+    const b = document.createElement('b'); b.textContent = acct.user.email; b.title = acct.user.email;
+    const out = document.createElement('button'); out.className = 'btn-small'; out.textContent = 'Log out'; out.onclick = () => acct.logout();
+    el.append(dot, b, span(acct.note ? '· ' + acct.note : ''), out);
+  } else if (acct.sb) {
+    const login = document.createElement('button'); login.className = 'btn-small'; login.textContent = 'Log in / Sign up'; login.onclick = () => openAuth('login');
+    el.append(login);
+  } else if (acct.state === 'err') {
+    const dot = span(''); dot.className = 'dot'; el.append(dot, span(acct.note));
+  }
+}
+
+// auth modal: views login | signup | forgot | newpass
+let authView = 'login';
+const AUTH = {
+  login:   { title: 'Log in', submit: 'Log in', sw: 'Create an account', pass: true, email: true, forgot: true },
+  signup:  { title: 'Create an account', submit: 'Create account', sw: 'I already have an account', pass: true, email: true, forgot: false },
+  forgot:  { title: 'Reset your password', submit: 'Email me a reset link', sw: 'Back to log in', pass: false, email: true, forgot: false },
+  newpass: { title: 'Choose a new password', submit: 'Save new password', sw: '', pass: true, email: false, forgot: false },
+};
+function authNote(text, cls) { const n = document.getElementById('authNote'); n.textContent = text; n.className = 'note ' + (cls || ''); }
+function openAuth(view) {
+  authView = view; const v = AUTH[view];
+  document.getElementById('authTitle').textContent = v.title;
+  document.getElementById('authSubmit').textContent = v.submit;
+  document.getElementById('authSwitch').textContent = v.sw;
+  document.getElementById('authSwitch').hidden = !v.sw;
+  document.getElementById('authForgot').hidden = !v.forgot;
+  document.getElementById('emailRow').hidden = !v.email;
+  document.getElementById('passRow').hidden = !v.pass;
+  document.getElementById('authPass').autocomplete = view === 'login' ? 'current-password' : 'new-password';
+  document.getElementById('authPass').value = '';
+  authNote(view === 'signup' ? 'Passwords need at least 6 characters.' : '');
+  openModal('authModal');
+  setTimeout(() => document.getElementById(v.email ? 'authEmail' : 'authPass').focus(), 0);
+}
+document.getElementById('authSwitch').onclick = () => openAuth(authView === 'login' ? 'signup' : 'login');
+document.getElementById('authForgot').onclick = () => openAuth('forgot');
+document.getElementById('authForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const email = document.getElementById('authEmail').value.trim(), password = document.getElementById('authPass').value;
+  const v = AUTH[authView];
+  if (v.email && !/^\S+@\S+\.\S+$/.test(email)) return authNote('Enter a valid email address.', 'bad');
+  if (v.pass && password.length < 6) return authNote('Passwords need at least 6 characters.', 'bad');
+  const btn = document.getElementById('authSubmit'); btn.disabled = true; authNote('Please wait…');
+  const here = location.href.split('#')[0];
+  let res;
+  try {
+    if (authView === 'login') res = await acct.sb.auth.signInWithPassword({ email, password });
+    else if (authView === 'signup') res = await acct.sb.auth.signUp({ email, password, options: { emailRedirectTo: here } });
+    else if (authView === 'forgot') res = await acct.sb.auth.resetPasswordForEmail(email, { redirectTo: here });
+    else res = await acct.sb.auth.updateUser({ password });
+  } catch (err) { res = { error: err }; }
+  btn.disabled = false;
+  if (res.error) return authNote(res.error.message || 'Something went wrong. Please try again.', 'bad');
+  if (authView === 'signup' && !res.data?.session) return authNote('Account created. Check your email for a confirmation link, then come back and log in.', 'good');
+  if (authView === 'forgot') return authNote('If that email has an account, a reset link is on its way.', 'good');
+  if (authView === 'newpass') authNote('Password updated.', 'good');
+  closeModals();
+});
 
 // ---- wiring ----
 const allTopics = [...new Set(VOCAB.flatMap(topicsOf))].sort();
@@ -362,6 +540,7 @@ document.addEventListener('keydown', e => {
 });
 
 buildQueue(); render();
+acct.init();
 }
 </script>
 </body>

@@ -3,6 +3,6 @@
 // Both values are safe to publish: the database only lets each person read and write their own progress.
 // Leave them empty and the site works without accounts, saving progress in the browser.
 window.FLASHCARDS_CONFIG = {
-  supabaseUrl: '',      // e.g. 'https://abcdefghijkl.supabase.co'
-  supabaseAnonKey: '',  // the "anon" / "publishable" key
+  supabaseUrl: 'https://rtcqabroiavcfuvvmzpv.supabase.co',
+  supabaseAnonKey: 'sb_publishable_0XF23r2jgDZ8gRDKyBn2sQ_7Xfka5_I',
 };

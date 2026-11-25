@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mandarin Flashcards · AQA GCSE</title>
+<style>
+  :root {
+    --bg: #f6f4ef; --panel: #fff; --ink: #1f2328; --muted: #6b7280; --line: #e5e1d8;
+    --accent: #b4232a; --green: #1f7a4d; --blue: #2b5fa8; --red: #b4232a; --grey: #9ca3af;
+    --r1: #6b3fa0; --r2: #0f6e7a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--ink); }
+  header.top { background: var(--panel); border-bottom: 1px solid var(--line); padding: 12px 20px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  h1 { font-size: 18px; margin: 0; margin-right: auto; }
+  h1 span { color: var(--accent); }
+  nav { display: flex; gap: 6px; flex-wrap: wrap; }
+  nav button { border: 1px solid var(--line); background: var(--panel); padding: 8px 14px; border-radius: 999px; cursor: pointer; font-size: 14px; color: var(--ink); }
+  nav button.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+  .count { display: inline-block; min-width: 22px; padding: 0 6px; margin-left: 6px; border-radius: 999px; background: var(--line); color: var(--ink); font-size: 12px; text-align: center; }
+  nav button.active .count { background: rgba(255,255,255,.2); color: #fff; }
+  main { max-width: 980px; margin: 0 auto; padding: 20px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; color: var(--muted); font-size: 14px; }
+  .toolbar .spacer { flex: 1; }
+  #topic { max-width: 260px; }
+  select, .btn-small { font: inherit; font-size: 14px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); color: var(--ink); cursor: pointer; }
+  .btn-small:disabled { opacity: .5; cursor: default; }
+  .filters { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 14px; font-size: 14px; color: var(--muted); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 6px 12px; cursor: pointer; user-select: none; color: var(--ink); }
+  .chip input { margin: 0; accent-color: var(--ink); }
+  .chip.off { color: var(--muted); background: transparent; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 2px 10px rgba(0,0,0,.04); overflow: hidden; }
+  .cols { display: grid; grid-template-columns: 1.2fr 1fr 1fr; min-height: 220px; }
+  .col { padding: 18px 20px; border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+  .col:last-child { border-right: 0; }
+  .col .label { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 10px; }
+  .col .value { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; }
+  .en .value { font-size: 24px; font-weight: 600; }
+  .py .value { font-size: 30px; color: var(--blue); }
+  .hz .value { font-size: 64px; font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Heiti SC", sans-serif; }
+  .hz.long .value { font-size: 40px; }
+  .hidden .value { color: var(--grey); font-size: 40px; }
+  .col.tested .label { color: var(--accent); font-weight: 600; }
+  .col.greyed { background: repeating-linear-gradient(45deg, #f1efe9, #f1efe9 8px, #ebe8e0 8px, #ebe8e0 16px); }
+  .col.greyed .value { color: #b8b3a7; font-size: 22px; }
+  .topic { font-size: 12px; color: var(--muted); text-align: center; margin-top: 8px; }
+  .actions { border-top: 1px solid var(--line); padding: 16px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; background: #fcfbf8; }
+  .actions button { font: inherit; font-size: 15px; padding: 10px 16px; border-radius: 10px; border: 1px solid transparent; cursor: pointer; color: #fff; font-weight: 500; }
+  .actions button kbd { font-family: inherit; font-size: 11px; opacity: .75; margin-left: 6px; padding: 1px 5px; border: 1px solid rgba(255,255,255,.5); border-radius: 4px; }
+  .b-reveal { background: var(--ink); min-width: 220px; }
+  .b-green { background: var(--green); } .b-blue { background: var(--blue); } .b-red { background: var(--red); }
+  .b-r1 { background: var(--r1); } .b-r2 { background: var(--r2); }
+  .actions button:hover { filter: brightness(1.08); }
+  .empty { padding: 50px 20px; text-align: center; color: var(--muted); }
+  .empty h2 { color: var(--ink); margin-top: 0; }
+  .progress { height: 4px; background: var(--line); }
+  .progress > div { height: 100%; background: var(--accent); transition: width .2s; }
+  .hint { font-size: 13px; color: var(--muted); text-align: center; margin-top: 12px; }
+  .modes-help { margin-top: 18px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; z-index: 10; overflow: auto; }
+  .modal-bg.open { display: flex; }
+  .modal { background: var(--panel); border-radius: 14px; max-width: 900px; width: 100%; padding: 20px; }
+  .modal-head { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .modal h2 { margin: 0; font-size: 18px; }
+  .modal input[type=search] { font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; width: 220px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; color: var(--muted); letter-spacing: .05em; position: sticky; top: 0; background: var(--panel); }
+  td.hzc { font-size: 22px; font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif; }
+  td.pyc { color: var(--blue); }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; margin: 1px 2px; background: var(--line); }
+  .tag.l { background: #fde8d7; color: #8a4b12; } .tag.a { background: #ece4f7; color: #4b2d7a; } .tag.b { background: #dcf0f2; color: #0b4f57; }
+  .settings textarea { width: 100%; height: 90px; font-family: monospace; font-size: 12px; }
+  .settings p { font-size: 14px; line-height: 1.5; }
+  @media (max-width: 700px) {
+    .cols { grid-template-columns: 1fr; }
+    .col { border-right: 0; border-bottom: 1px solid var(--line); min-height: 110px; }
+    .hz .value { font-size: 52px; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>汉字 <span>Flashcards</span> · AQA GCSE Mandarin</h1>
+  <nav id="nav"></nav>
+</header>
+<main>
+  <div class="toolbar">
+    <label>Topic: <select id="topic"></select></label>
+    <label>Order: <select id="order"><option value="shuffle">Shuffled</option><option value="list">List order</option></select></label>
+    <span id="status"></span>
+    <span class="spacer"></span>
+    <button class="btn-small" id="undoBtn" title="Undo last classification (Ctrl+Z)">↶ Undo</button>
+    <button class="btn-small" id="viewBtn">View all cards in deck</button>
+    <button class="btn-small" id="settingsBtn">⚙ Progress</button>
+  </div>
+  <div class="filters" id="filters"></div>
+  <div class="card" id="card"></div>
+  <div class="hint">Keyboard: <b>Space</b> to reveal · <b>1–6</b> to choose · <b>Ctrl+Z</b> to undo</div>
+  <div class="modes-help" id="modeHelp"></div>
+</main>
+
+<div class="modal-bg" id="listModal"><div class="modal">
+  <div class="modal-head"><h2 id="listTitle"></h2><div><input type="search" id="listSearch" placeholder="Search…"> <button class="btn-small" data-close>Close</button></div></div>
+  <div id="listBody" style="max-height:70vh;overflow:auto"></div>
+</div></div>
+
+<div class="modal-bg" id="settingsModal"><div class="modal settings">
+  <div class="modal-head"><h2>Progress</h2><button class="btn-small" data-close>Close</button></div>
+  <p>Progress is saved automatically in this browser.</p>
+  <p id="summary"></p>
+  <p>Backup code — paste it on another device or browser to copy your progress across:</p>
+  <textarea id="backup" readonly></textarea>
+  <p><button class="btn-small" id="copyBackup">Copy backup code</button></p>
+  <textarea id="restore" placeholder="Paste a backup code here…"></textarea>
+  <p><button class="btn-small" id="restoreBtn">Restore from code</button>
+     <button class="btn-small" id="resetBtn" style="color:var(--red)">Reset all progress</button>
+     <span id="msg" style="margin-left:8px;color:var(--muted)"></span></p>
+</div></div>
+
+<script>
+{
+const VOCAB = __VOCAB__;
+const BY_ID = Object.fromEntries(VOCAB.map(c => [c.id, c]));
+const STORE_KEY = 'mandarin-flashcards-v1';
+const LS = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { localStorage.setItem(k, v); } catch {} } };
+
+// Per-card state: done = classified in Initial; deck flags <deck><form>: l = LEARN, a = REVISE I, b = REVISE II; h = hanzi, p = pinyin
+let S = load(STORE_KEY);
+let mode = LS.get(STORE_KEY + '-mode') || 'initial';
+if (!['initial', 'learn', 'rev1', 'rev2'].includes(mode)) mode = 'initial';
+let topic = LS.get(STORE_KEY + '-topic') || '';
+let order = LS.get(STORE_KEY + '-order') || 'shuffle';
+let filters = (() => { try { return JSON.parse(LS.get(STORE_KEY + '-filters')) || {}; } catch { return {}; } })();
+let queue = [], revealed = false, sessionTotal = 0, sessionDone = 0;
+const undoStack = [];
+
+function migrate(s) {
+  for (const v of Object.values(s)) {
+    if (v.ph) { v.ah = 1; delete v.ph; }
+    if (v.pp) { v.ap = 1; delete v.pp; }
+  }
+  return s;
+}
+function load(key) { try { return migrate(JSON.parse(LS.get(key)) || {}); } catch { return {}; } }
+function save() { LS.set(STORE_KEY, JSON.stringify(S)); }
+function st(id) { return S[id] || (S[id] = {}); }
+
+const DECK = { learn: 'l', rev1: 'a', rev2: 'b' };
+const MODES = {
+  initial: { name: 'Initial' },
+  learn:   { name: 'LEARN' },
+  rev1:    { name: 'Revise I' },
+  rev2:    { name: 'Revise II' },
+};
+const HELP = {
+  initial: 'New cards. Reveal both forms, then classify. Classified cards leave this deck: a form you don\'t know goes to LEARN; “Revise I” / “Revise II” send both forms to that deck.',
+  learn: 'Forms you are learning. Use the filters to choose cards that need the pinyin only, the hanzi only, or both. Only the forms in this deck are tested; the other column is greyed out. “Learn again” brings the card back later in this session.',
+  rev1: 'Forms you sent to Revise I. Same filters as LEARN. A form you don\'t know goes back to LEARN; “Know” removes it from revision.',
+  rev2: 'Forms you sent to Revise II. Same filters as LEARN. A form you don\'t know goes back to LEARN; “Know” removes it from revision.',
+};
+const CATS = [['py', 'Pinyin only'], ['hz', 'Hanzi only'], ['both', 'Both']];
+
+const topicsOf = c => c.t.split(';').map(s => s.trim()).filter(Boolean);
+const inTopic = id => !topic || topicsOf(BY_ID[id]).includes(topic);
+function formsIn(m, id) {
+  const s = st(id);
+  if (m === 'initial') return s.done ? null : { hz: true, py: true };
+  const d = DECK[m], hz = !!s[d + 'h'], py = !!s[d + 'p'];
+  return hz || py ? { hz, py } : null;
+}
+const catOf = f => f.hz && f.py ? 'both' : f.hz ? 'hz' : 'py';
+const filterOn = (m, cat) => (filters[m] || { py: true, hz: true, both: true })[cat];
+const deckIds = (m, useFilter) => VOCAB.map(c => c.id).filter(id => {
+  const f = formsIn(m, id);
+  return f && inTopic(id) && (!useFilter || m === 'initial' || filterOn(m, catOf(f)));
+});
+const inDeck = id => { const f = formsIn(mode, id); return f && (mode === 'initial' || filterOn(mode, catOf(f))); };
+
+function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function buildQueue() {
+  queue = deckIds(mode, true);
+  if (order === 'shuffle') shuffle(queue);
+  sessionTotal = queue.length; sessionDone = 0; revealed = false;
+}
+function current() {
+  while (queue.length && !inDeck(queue[0])) queue.shift();
+  return queue[0];
+}
+
+function actionsFor(id) {
+  const t = formsIn(mode, id);
+  if (t.hz && t.py) return [
+    ['Know both', 'b-green', 'kboth'], ['Know pinyin', 'b-blue', 'kpy'], ['Know hanzi', 'b-blue', 'khz'],
+    ['Know neither', 'b-red', 'neither'], ['Revise I', 'b-r1', 'r1'], ['Revise II', 'b-r2', 'r2'],
+  ];
+  return [['Learn again', 'b-red', 'again'], ['Revise I', 'b-r1', 'r1'], ['Revise II', 'b-r2', 'r2'], ['Know', 'b-green', 'know']];
+}
+
+function classify(action) {
+  const id = current(); if (!id || !revealed) return;
+  undoStack.push({ id, prev: JSON.parse(JSON.stringify(st(id))), queue: queue.slice(), sessionDone, mode });
+  if (undoStack.length > 50) undoStack.shift();
+  const s = st(id), t = formsIn(mode, id);
+  const tested = [t.hz && 'h', t.py && 'p'].filter(Boolean);
+  // 1. take the tested forms out of the current deck
+  if (mode === 'initial') s.done = 1; else for (const f of tested) delete s[DECK[mode] + f];
+  // 2. send each tested form to its destination deck (or nowhere if known)
+  const dest = {
+    kboth: {}, kpy: { h: 'l' }, khz: { p: 'l' }, neither: { h: 'l', p: 'l' },
+    r1: { h: 'a', p: 'a' }, r2: { h: 'b', p: 'b' }, again: { h: 'l', p: 'l' }, know: {},
+  }[action];
+  let requeue = false;
+  for (const f of tested) if (dest[f]) { s[dest[f] + f] = 1; if (dest[f] === DECK[mode]) requeue = true; }
+  save();
+  queue.shift();
+  if (requeue) queue.splice(Math.min(queue.length, 5 + Math.floor(Math.random() * 5)), 0, id);
+  else sessionDone++;
+  revealed = false;
+  render();
+}
+
+function undo() {
+  const u = undoStack.pop(); if (!u) return;
+  S[u.id] = u.prev; save();
+  if (u.mode !== mode) { mode = u.mode; LS.set(STORE_KEY + '-mode', mode); }
+  queue = u.queue; sessionDone = u.sessionDone; revealed = true;
+  render();
+}
+function reveal() { if (current() && !revealed) { revealed = true; render(); } }
+function esc(s) { return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch])); }
+
+function render() {
+  document.getElementById('nav').innerHTML = Object.entries(MODES).map(([k, m]) =>
+    `<button data-mode="${k}" class="${k === mode ? 'active' : ''}">${m.name}<span class="count">${deckIds(k).length}</span></button>`).join('');
+  document.getElementById('modeHelp').textContent = HELP[mode];
+  document.getElementById('undoBtn').disabled = !undoStack.length;
+
+  // filters (not for Initial)
+  const fEl = document.getElementById('filters');
+  if (mode === 'initial') fEl.innerHTML = '';
+  else {
+    const all = deckIds(mode);
+    fEl.innerHTML = 'Show cards that need: ' + CATS.map(([k, label]) => {
+      const n = all.filter(id => catOf(formsIn(mode, id)) === k).length, on = filterOn(mode, k);
+      return `<label class="chip ${on ? '' : 'off'}"><input type="checkbox" data-cat="${k}" ${on ? 'checked' : ''}>${label}<span class="count">${n}</span></label>`;
+    }).join('');
+  }
+
+  const card = document.getElementById('card');
+  const id = current();
+  const remaining = new Set(queue).size;
+  document.getElementById('status').textContent = id ? `${remaining} card${remaining === 1 ? '' : 's'} left in this session` : '';
+
+  if (!id) {
+    const total = deckIds(mode, true).length, unfiltered = deckIds(mode).length;
+    const why = total ? `${total} card(s) still in the ${MODES[mode].name} deck.`
+      : unfiltered ? `There are ${unfiltered} card(s) in this deck, but none match the selected filters.`
+      : mode === 'initial' ? 'You have classified every card' + (topic ? ' in this topic.' : '.') : 'Nothing to review here' + (topic ? ' for this topic' : '') + ' right now.';
+    card.innerHTML = `<div class="empty"><h2>${total ? 'Session complete 🎉' : 'Nothing to show'}</h2><p>${why}</p>
+      ${total ? '<div class="actions" style="background:none;border:0"><button class="b-reveal" id="restart">Go through the deck again</button></div>' : ''}</div>`;
+    const r = document.getElementById('restart'); if (r) r.onclick = () => { buildQueue(); render(); };
+    return;
+  }
+
+  const c = BY_ID[id], t = formsIn(mode, id);
+  const col = (cls, label, value, isTested) => isTested
+    ? `<div class="col ${cls} tested ${revealed ? '' : 'hidden'} ${String(value).length > 3 ? 'long' : ''}"><div class="label">${label}</div><div class="value">${revealed ? esc(value) : '?'}</div></div>`
+    : `<div class="col ${cls} greyed"><div class="label">${label} · not tested</div><div class="value">${revealed ? esc(value) : ''}</div></div>`;
+  const pct = sessionTotal ? Math.round(100 * sessionDone / sessionTotal) : 0;
+  card.innerHTML = `
+    <div class="progress"><div style="width:${pct}%"></div></div>
+    <div class="cols">
+      <div class="col en"><div class="label">English</div><div class="value">${esc(c.en)}</div><div class="topic">${esc(c.t)}</div></div>
+      ${col('py', 'Pinyin', c.py, t.py)}
+      ${col('hz', 'Hanzi', c.hz, t.hz)}
+    </div>
+    <div class="actions">${revealed
+      ? actionsFor(id).map(([label, cls, act], i) => `<button class="${cls}" data-act="${act}">${label}<kbd>${i + 1}</kbd></button>`).join('')
+      : `<button class="b-reveal" id="revealBtn">Reveal <kbd>Space</kbd></button>`}</div>`;
+  const rb = document.getElementById('revealBtn'); if (rb) rb.onclick = reveal;
+  card.querySelectorAll('[data-act]').forEach(b => b.onclick = () => classify(b.dataset.act));
+}
+
+// ---- list modal ----
+function deckTags(id) {
+  const s = st(id), tags = [];
+  if (!s.done) tags.push('<span class="tag">Initial</span>');
+  for (const [d, name] of [['l', 'Learn'], ['a', 'Revise I'], ['b', 'Revise II']])
+    for (const [f, fn] of [['h', 'hanzi'], ['p', 'pinyin']]) if (s[d + f]) tags.push(`<span class="tag ${d}">${name} ${fn}</span>`);
+  return tags.join('') || '<span class="tag">Known</span>';
+}
+function renderList() {
+  const q = document.getElementById('listSearch').value.trim().toLowerCase();
+  const ids = deckIds(mode, true).filter(id => { const c = BY_ID[id]; return !q || (c.en + ' ' + c.py + ' ' + c.hz).toLowerCase().includes(q); });
+  document.getElementById('listTitle').textContent = `${MODES[mode].name} deck — ${ids.length} card${ids.length === 1 ? '' : 's'}${topic ? ' · ' + topic : ''}`;
+  document.getElementById('listBody').innerHTML = ids.length ? `<table><thead><tr><th>English</th><th>Pinyin</th><th>Hanzi</th><th>Decks</th></tr></thead><tbody>${
+    ids.map(id => { const c = BY_ID[id]; return `<tr><td>${esc(c.en)}</td><td class="pyc">${esc(c.py)}</td><td class="hzc">${esc(c.hz)}</td><td>${deckTags(id)}</td></tr>`; }).join('')
+  }</tbody></table>` : '<p class="empty">No cards.</p>';
+}
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModals() { document.querySelectorAll('.modal-bg').forEach(m => m.classList.remove('open')); }
+function msg(s) { document.getElementById('msg').textContent = s; }
+
+function renderSettings() {
+  const ids = VOCAB.map(c => c.id), n = f => ids.filter(f).length;
+  const has = (i, d) => st(i)[d + 'h'] || st(i)[d + 'p'];
+  document.getElementById('summary').innerHTML =
+    `<b>${VOCAB.length}</b> cards · <b>${n(i => !st(i).done)}</b> unseen · <b>${n(i => st(i).done && !has(i, 'l') && !has(i, 'a') && !has(i, 'b'))}</b> fully known<br>` +
+    ['l', 'a', 'b'].map((d, k) => `${['LEARN', 'Revise I', 'Revise II'][k]}: <b>${n(i => st(i)[d + 'h'])}</b> hanzi, <b>${n(i => st(i)[d + 'p'])}</b> pinyin`).join(' · ');
+  document.getElementById('backup').value = btoa(unescape(encodeURIComponent(JSON.stringify(S))));
+}
+
+// ---- wiring ----
+const allTopics = [...new Set(VOCAB.flatMap(topicsOf))].sort();
+const topicSel = document.getElementById('topic');
+topicSel.innerHTML = '<option value="">All topics</option>' + allTopics.map(t => `<option>${esc(t)}</option>`).join('');
+if (!allTopics.includes(topic)) topic = '';
+topicSel.value = topic;
+topicSel.onchange = () => { topic = topicSel.value; LS.set(STORE_KEY + '-topic', topic); buildQueue(); render(); };
+const orderSel = document.getElementById('order'); orderSel.value = order;
+orderSel.onchange = () => { order = orderSel.value; LS.set(STORE_KEY + '-order', order); buildQueue(); render(); };
+
+document.getElementById('filters').addEventListener('change', e => {
+  const k = e.target.dataset.cat; if (!k) return;
+  filters[mode] = { py: filterOn(mode, 'py'), hz: filterOn(mode, 'hz'), both: filterOn(mode, 'both'), [k]: e.target.checked };
+  LS.set(STORE_KEY + '-filters', JSON.stringify(filters));
+  e.target.blur();
+  buildQueue(); render();
+});
+document.getElementById('nav').addEventListener('click', e => {
+  const b = e.target.closest('[data-mode]'); if (!b) return;
+  mode = b.dataset.mode; LS.set(STORE_KEY + '-mode', mode); buildQueue(); render();
+});
+document.getElementById('undoBtn').onclick = undo;
+document.getElementById('viewBtn').onclick = () => { document.getElementById('listSearch').value = ''; renderList(); openModal('listModal'); };
+document.getElementById('listSearch').oninput = renderList;
+document.getElementById('settingsBtn').onclick = () => { renderSettings(); msg(''); openModal('settingsModal'); };
+document.querySelectorAll('.modal-bg').forEach(m => m.addEventListener('click', e => { if (e.target === m || e.target.hasAttribute('data-close')) closeModals(); }));
+document.getElementById('copyBackup').onclick = () => { const t = document.getElementById('backup'); t.select(); Promise.resolve(navigator.clipboard?.writeText(t.value)).then(() => msg('Copied.'), () => msg('Select the code and copy it manually.')); };
+document.getElementById('restoreBtn').onclick = () => {
+  try { const d = JSON.parse(decodeURIComponent(escape(atob(document.getElementById('restore').value.trim()))));
+    if (typeof d !== 'object' || !d) throw 0; S = migrate(d); save(); undoStack.length = 0; buildQueue(); render(); renderSettings(); msg('Progress restored.');
+  } catch { msg('That backup code is not valid.'); }
+};
+document.getElementById('resetBtn').onclick = () => {
+  const b = document.getElementById('resetBtn');
+  if (!b.dataset.armed) { b.dataset.armed = 1; b.textContent = 'Click again to confirm reset'; setTimeout(() => { delete b.dataset.armed; b.textContent = 'Reset all progress'; }, 4000); return; }
+  delete b.dataset.armed; b.textContent = 'Reset all progress'; msg('All progress reset.');
+  S = {}; save(); undoStack.length = 0; buildQueue(); render(); renderSettings();
+};
+
+document.addEventListener('keydown', e => {
+  if (e.target.matches('input, textarea, select')) return;
+  if (e.key === 'Escape') return closeModals();
+  if (document.querySelector('.modal-bg.open')) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); return undo(); }
+  if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); if (!revealed) reveal(); return; }
+  const n = parseInt(e.key, 10);
+  if (revealed && n >= 1) { const id = current(); const a = id && actionsFor(id)[n - 1]; if (a) classify(a[2]); }
+});
+
+buildQueue(); render();
+}
+</script>
+</body>
+</html>
